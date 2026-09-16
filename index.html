@@ -150,7 +150,7 @@
             opacity: 0.6;
         }
 
-        /* חץ הלולאה החוזרת (מקיף בדיוק את 3 השלבים הראשונים) */
+        /* חץ הלולאה החוזרת */
         .loop-arrow-container {
             position: absolute;
             left: -55px;
@@ -242,9 +242,15 @@
             opacity: 0.4;
         }
 
-        .train-part { width: 60%; background-color: #fbd38d; color: #744210; border-left: 2px solid #cbd5e0; }
-        .val-part { width: 20%; background-color: #9ae6b4; color: #22543d; border-left: 2px solid #cbd5e0; }
-        .test-part { width: 20%; background-color: #90cdf4; color: #2a4365; }
+        /* במצב לא נכון: Train ו-Test בלבד (ללא Validation) */
+        .wrong-mode .train-part { width: 80%; background-color: #fbd38d; color: #744210; border-left: 2px solid #cbd5e0; }
+        .wrong-mode .val-part { display: none; }
+        .wrong-mode .test-part { width: 20%; background-color: #90cdf4; color: #2a4365; }
+
+        /* במצב נכון: Train, Validation ו-Test */
+        .correct-mode .train-part { width: 60%; background-color: #fbd38d; color: #744210; border-left: 2px solid #cbd5e0; }
+        .correct-mode .val-part { width: 20%; display: flex; background-color: #9ae6b4; color: #22543d; border-left: 2px solid #cbd5e0; }
+        .correct-mode .test-part { width: 20%; background-color: #90cdf4; color: #2a4365; }
 
         .highlight-box {
             padding: 12px 18px;
@@ -327,9 +333,9 @@
 
         <!-- פאנל ויזואלי -->
         <div class="visualization-panel">
-            <div class="section-labels-row">
+            <div class="section-labels-row" id="labelsRow">
                 <span>Train</span>
-                <span id="labelVal" style="transition: opacity 0.3s;">Validation</span>
+                <span id="labelVal">Validation</span>
                 <span>Test</span>
             </div>
             
@@ -358,9 +364,9 @@
 
 <script>
     let currentMode = 'wrong';
-    let currentLoopStep = 0; // 0: בחירה, 1: אימון, 2: בדיקה
-    let kSubStep = 0;        // אינדקס ה-K הנוכחי (0 עד 4)
-    let postLoopStep = 3;    // 3: נמצא K אופטימלי, 4: בחירה סופית
+    let currentLoopStep = 0; 
+    let kSubStep = 0;        
+    let postLoopStep = 3;    
     let autoPlayInterval = null;
 
     const kValuesList = [1, 3, 5, 7, 9];
@@ -377,9 +383,9 @@
             explanations: [
                 "שלב 1 בלולאה: בוחרים ערך K לבדיקה (למשל K = [K_VAL]).",
                 "שלב 2 בלולאה: מאמנים את המסווג על קבוצת ה-Train.",
-                "שלב 3 בלולאה: 🔄 בוחנים ביצועים על ה-Test, חוזרים חזרה לעדכון K באיטרציה הבאה!",
+                "שלב 3 בלולאה: 🔄 בוחנים ביצועים ישירות על ה-Test, וחוזרים חזרה לעדכון K באיטרציה הבאה!",
                 "סיום הלולאה: מתוך כל האיטרציות מול ה-Test, נמצא ה-K האופטימלי.",
-                "⚠️ בעיה חמורה! מכיוון שה-Test שימש שוב ושוב בלולאה, המודל דלף מידע והותאם אליו יתר על המידה."
+                "⚠️ בעיה חמורה! מכיוון שה-Test שימש שוב ושוב בלולאה, למודל דלף מידע מה test  ( זליגת מידע ) והותאם אליו יתר על המידה."
             ]
         },
         correct: {
@@ -410,17 +416,20 @@
         const btnWrong = document.getElementById('btnWrongTab');
         const btnCorrect = document.getElementById('btnCorrectTab');
         const mainSub = document.getElementById('mainSubtitle');
+        const labelVal = document.getElementById('labelVal');
 
         if (mode === 'wrong') {
             bodyTag.className = 'wrong-mode';
             btnWrong.className = 'tab-btn active-tab-wrong';
             btnCorrect.className = 'tab-btn';
             mainSub.innerText = "התהליך הלא נכון: איטרציות בלולאה מול ה-Test ואז מציאת K אופטימלי";
+            labelVal.style.display = 'none';
         } else {
             bodyTag.className = 'correct-mode';
             btnWrong.className = 'tab-btn';
             btnCorrect.className = 'tab-btn active-tab-correct';
             mainSub.innerText = "התהליך הנכון: איטרציות בלולאה מול ה-Validation ואז מציאת K אופטימלי";
+            labelVal.style.display = 'inline';
         }
 
         buildStepsDOM();
@@ -458,7 +467,6 @@
     function updateView() {
         const stepsArr = dataModel[currentMode].steps;
         
-        // חישוב השלב הפעיל הכולל במסך
         let activeGlobalStep = (kSubStep < kValuesList.length) ? currentLoopStep : postLoopStep;
 
         for (let i = 0; i < stepsArr.length; i++) {
@@ -466,14 +474,12 @@
             node.className = 'step-item';
             
             if (kSubStep >= kValuesList.length) {
-                // הלולאה הסתיימה, עברנו לשלבים 3 ו-4
                 if (i < postLoopStep) {
                     node.classList.add('completed');
                 } else if (i === postLoopStep) {
                     node.classList.add('active');
                 }
             } else {
-                // אנחנו בתוך לולאת האיטרציות (שלבים 0, 1, 2)
                 if (i < currentLoopStep) {
                     node.classList.add('completed');
                 } else if (i === currentLoopStep) {
@@ -482,7 +488,6 @@
             }
         }
 
-        // עדכון תצוגת ערך ה-K הנוכחי בבאג
         const kBadge = document.getElementById('kValBadge');
         if (kBadge) {
             kBadge.innerText = kValuesList[Math.min(kSubStep, kValuesList.length - 1)];
@@ -520,10 +525,10 @@
         const barTest = document.getElementById('barTest');
 
         barTrain.style.opacity = '0.4';
-        barVal.style.opacity = '0.4';
+        if(barVal) barVal.style.opacity = '0.4';
         barTest.style.opacity = '0.4';
         barTrain.style.boxShadow = 'none';
-        barVal.style.boxShadow = 'none';
+        if(barVal) barVal.style.boxShadow = 'none';
         barTest.style.boxShadow = 'none';
 
         if (currentMode === 'wrong') {
@@ -536,7 +541,6 @@
                     barTest.style.boxShadow = '0 0 10px rgba(229, 62, 62, 0.9)';
                 } else {
                     barTrain.style.opacity = '1';
-                    barVal.style.opacity = '1';
                     barTest.style.opacity = '1';
                 }
             } else {
@@ -583,18 +587,15 @@
 
     function nextStep() {
         if (kSubStep < kValuesList.length) {
-            // התקדמות בתוך הלולאה (0 ➔ 1 ➔ 2 ואז חזרה ל-0 עם K הבא)
             currentLoopStep++;
             if (currentLoopStep > 2) {
                 currentLoopStep = 0;
-                kSubStep++; // עוברים ל-K הבא
+                kSubStep++; 
                 if (kSubStep >= kValuesList.length) {
-                    // הלולאה הסתיימה! עוברים לשלב 3 ("נמצא K אופטימלי")
                     postLoopStep = 3;
                 }
             }
         } else {
-            // אחרי שהלולאה הסתיימה, מתקדמים לשלב 4 ("בחירה סופית")
             if (postLoopStep === 3) {
                 postLoopStep = 4;
             } else {
@@ -609,7 +610,6 @@
             if (postLoopStep === 4) {
                 postLoopStep = 3;
             } else {
-                // חזרה מהשלב "נמצא K אופטימלי" חזרה לאיטרציה האחרונה בלולאה
                 kSubStep = kValuesList.length - 1;
                 currentLoopStep = 2;
             }
@@ -661,6 +661,8 @@
         }
     }
 
+    // אתחול התחלתי במצב הלא נכון
+    document.getElementById('labelVal').style.display = 'none';
     buildStepsDOM();
     updateView();
 </script>
