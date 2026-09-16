@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>השוואת תהליכי אימון מכונה - איטרציות מלאות בלולאה</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 1150px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 25px;
+            border-radius: 14px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #1a365d;
+            margin-bottom: 5px;
+            font-size: 2.1em;
+        }
+        .subtitle {
+            text-align: center;
+            color: #4a5568;
+            margin-bottom: 25px;
+            font-size: 1.1em;
+        }
+
+        /* בורר מצבים (טאבים) */
+        .mode-selector {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .tab-btn {
+            padding: 10px 25px;
+            font-size: 1.1em;
+            font-weight: bold;
+            border: 2px solid #cbd5e0;
+            background: #e2e8f0;
+            color: #4a5568;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tab-btn.active-tab-wrong {
+            background-color: #fff5f5;
+            border-color: #e53e3e;
+            color: #c53030;
+        }
+        .tab-btn.active-tab-correct {
+            background-color: #f0fff4;
+            border-color: #38a169;
+            color: #276749;
+        }
+
+        .main-layout {
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .steps-container-wrapper {
+            flex: 1.4;
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .steps-list {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .step-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 11px 15px;
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 1.05em;
+            font-weight: 600;
+            color: #4a5568;
+            transition: all 0.3s ease;
+        }
+
+        .step-content-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .step-item .bullet {
+            width: 12px;
+            height: 12px;
+            background-color: #cbd5e0;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .standard-badge {
+            background: #edf2f7;
+            color: #4a5568;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.85em;
+            font-weight: bold;
+            border: 1px solid #cbd5e0;
+        }
+
+        /* עיצוב פעיל לתהליך הלא נכון */
+        .wrong-mode .step-item.active {
+            background-color: #fff5f5;
+            border-color: #e53e3e;
+            color: #c53030;
+            transform: scale(1.02);
+        }
+        .wrong-mode .step-item.active .bullet {
+            background-color: #e53e3e;
+            box-shadow: 0 0 0 4px rgba(229, 62, 62, 0.2);
+        }
+
+        /* עיצוב פעיל לתהליך הנכון */
+        .correct-mode .step-item.active {
+            background-color: #f0fff4;
+            border-color: #38a169;
+            color: #276749;
+            transform: scale(1.02);
+        }
+        .correct-mode .step-item.active .bullet {
+            background-color: #38a169;
+            box-shadow: 0 0 0 4px rgba(56, 161, 105, 0.2);
+        }
+
+        .step-item.completed {
+            opacity: 0.6;
+        }
+
+        /* חץ הלולאה החוזרת (מקיף בדיוק את 3 השלבים הראשונים) */
+        .loop-arrow-container {
+            position: absolute;
+            left: -55px;
+            top: 5px;
+            height: 165px;
+            width: 50px;
+            border: 4px solid #3182ce;
+            border-right: none;
+            border-radius: 30px 0 0 30px;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .loop-arrow-container.visible {
+            display: block;
+            opacity: 1;
+        }
+        .loop-arrow-head {
+            position: absolute;
+            right: -2px;
+            top: -9px;
+            width: 0; 
+            height: 0; 
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-bottom: 14px solid #3182ce;
+        }
+        .loop-label {
+            position: absolute;
+            left: -160px;
+            top: 70px;
+            background: #ebf8ff;
+            color: #2b6cb0;
+            padding: 5px 10px;
+            font-size: 0.82em;
+            font-weight: bold;
+            border-radius: 6px;
+            border: 1px solid #90cdf4;
+            display: none;
+            white-space: nowrap;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+        .loop-label.visible {
+            display: block;
+        }
+
+        /* פאנל ויזואלי מצד שמאל */
+        .visualization-panel {
+            flex: 1;
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 270px;
+        }
+
+        .section-labels-row {
+            display: flex;
+            width: 100%;
+            justify-content: space-around;
+            font-weight: bold;
+            font-size: 0.95em;
+            color: #4a5568;
+            margin-bottom: 5px;
+        }
+
+        .data-bar-container {
+            width: 100%;
+            display: flex;
+            height: 55px;
+            background: #edf2f7;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #cbd5e0;
+            margin: 15px 0;
+        }
+
+        .data-section {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1em;
+            transition: all 0.4s ease;
+            opacity: 0.4;
+        }
+
+        .train-part { width: 60%; background-color: #fbd38d; color: #744210; border-left: 2px solid #cbd5e0; }
+        .val-part { width: 20%; background-color: #9ae6b4; color: #22543d; border-left: 2px solid #cbd5e0; }
+        .test-part { width: 20%; background-color: #90cdf4; color: #2a4365; }
+
+        .highlight-box {
+            padding: 12px 18px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1em;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            box-sizing: border-box;
+            transition: all 0.3s;
+        }
+        .wrong-theme-box { background-color: #fff5f5; border: 2px solid #e53e3e; color: #c53030; }
+        .correct-theme-box { background-color: #f0fff4; border: 2px solid #38a169; color: #276749; }
+
+        /* כפתורי שליטה */
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            font-size: 1.05em;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-nav { background-color: #4a5568; color: white; }
+        .btn-nav:hover { background-color: #2d3748; }
+        .btn-nav:disabled { background-color: #cbd5e0; cursor: not-allowed; }
+
+        .btn-play { background-color: #3182ce; color: white; }
+        .btn-play:hover { background-color: #2b6cb0; }
+        
+        .btn-reset { background-color: #e2e8f0; color: #4a5568; }
+        .btn-reset:hover { background-color: #cbd5e0; }
+
+        .status-footer {
+            margin-top: 15px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 0.95em;
+            color: #718096;
+            min-height: 24px;
+        }
+    </style>
+</head>
+<body id="bodyTag" class="wrong-mode">
+
+<div class="container">
+    <h1>תהליך אימון מכונה לומדת</h1>
+    <div class="subtitle" id="mainSubtitle">איטרציות בלולאה על 3 השלבים הראשונים לפני מציאת ה-K האופטימלי</div>
+
+    <!-- כפתורי מעבר בין המצבים -->
+    <div class="mode-selector">
+        <button id="btnWrongTab" class="tab-btn active-tab-wrong" onclick="switchMode('wrong')">❌ התהליך הלא נכון</button>
+        <button id="btnCorrectTab" class="tab-btn" onclick="switchMode('correct')">✔ התהליך הנכון</button>
+    </div>
+
+    <div class="main-layout">
+        <!-- רשימת השלבים עם חץ הלולאה -->
+        <div class="steps-container-wrapper">
+            <div class="loop-arrow-container" id="loopArrow">
+                <div class="loop-arrow-head"></div>
+            </div>
+            <div class="loop-label" id="loopLabel">🔄 לולאת איטרציות K</div>
+            <div class="steps-list" id="stepsListContainer"></div>
+        </div>
+
+        <!-- פאנל ויזואלי -->
+        <div class="visualization-panel">
+            <div class="section-labels-row">
+                <span>Train</span>
+                <span id="labelVal" style="transition: opacity 0.3s;">Validation</span>
+                <span>Test</span>
+            </div>
+            
+            <div class="data-bar-container">
+                <div class="data-section train-part" id="barTrain">Train</div>
+                <div class="data-section val-part" id="barVal">Validation</div>
+                <div class="data-section test-part" id="barTest">Test</div>
+            </div>
+
+            <div id="explanationBox" class="highlight-box wrong-theme-box">
+                השתמש בכפתורים למטה כדי לעבור שלב-שלב או להפעיל אנימציה.
+            </div>
+        </div>
+    </div>
+
+    <!-- כפתורי שליטה ידניים ואוטומטיים -->
+    <div class="controls">
+        <button class="btn btn-reset" onclick="resetSteps()">🔄 איפוס</button>
+        <button class="btn btn-nav" id="prevBtn" onclick="prevStep()" disabled>▶ שלב קודם</button>
+        <button class="btn btn-nav" id="nextBtn" onclick="nextStep()">שלב הבא ◀</button>
+        <button class="btn btn-play" id="playBtn" onclick="togglePlay()">▶ הפעל אוטומטית</button>
+    </div>
+
+    <div class="status-footer" id="statusFooter"></div>
+</div>
+
+<script>
+    let currentMode = 'wrong';
+    let currentLoopStep = 0; // 0: בחירה, 1: אימון, 2: בדיקה
+    let kSubStep = 0;        // אינדקס ה-K הנוכחי (0 עד 4)
+    let postLoopStep = 3;    // 3: נמצא K אופטימלי, 4: בחירה סופית
+    let autoPlayInterval = null;
+
+    const kValuesList = [1, 3, 5, 7, 9];
+
+    const dataModel = {
+        wrong: {
+            steps: [
+                "בחירת היפר-פרמטרים",
+                "אימון המסווג על Train",
+                "בחינת ביצועים על Test",
+                "נמצא K אופטימלי",
+                "בחירה סופית של היפר-פרמטרים"
+            ],
+            explanations: [
+                "שלב 1 בלולאה: בוחרים ערך K לבדיקה (למשל K = [K_VAL]).",
+                "שלב 2 בלולאה: מאמנים את המסווג על קבוצת ה-Train.",
+                "שלב 3 בלולאה: 🔄 בוחנים ביצועים על ה-Test, חוזרים חזרה לעדכון K באיטרציה הבאה!",
+                "סיום הלולאה: מתוך כל האיטרציות מול ה-Test, נמצא ה-K האופטימלי.",
+                "⚠️ בעיה חמורה! מכיוון שה-Test שימש שוב ושוב בלולאה, המודל דלף מידע והותאם אליו יתר על המידה."
+            ]
+        },
+        correct: {
+            steps: [
+                "בחירת היפר-פרמטרים",
+                "אימון המסווג על Train",
+                "בחינת ביצועים על Validation",
+                "נמצא K אופטימלי",
+                "בחירה סופית של היפר-פרמטרים"
+            ],
+            explanations: [
+                "שלב 1 בלולאה: בוחרים ערך K לבדיקה (למשל K = [K_VAL]).",
+                "שלב 2 בלולאה: מאמנים את המסווג על קבוצת ה-Train.",
+                "שלב 3 בלולאה: 🔄 בוחנים ביצועים אך ורק על ה-Validation, חוזרים חזרה לעדכון K באיטרציה הבאה!",
+                "סיום הלולאה: נמצא ה-K האופטימלי אך ורק על בסיס קבוצת ה-Validation.",
+                "✨ שלב סופי: מריצים את המודל פעם אחת בלבד עם ה-K שנבחר על קבוצת ה-Test לקבלת ציון אובייקטיבי!"
+            ]
+        }
+    };
+
+    function switchMode(mode) {
+        stopAutoPlay();
+        currentMode = mode;
+        currentLoopStep = 0;
+        kSubStep = 0;
+        
+        const bodyTag = document.getElementById('bodyTag');
+        const btnWrong = document.getElementById('btnWrongTab');
+        const btnCorrect = document.getElementById('btnCorrectTab');
+        const mainSub = document.getElementById('mainSubtitle');
+
+        if (mode === 'wrong') {
+            bodyTag.className = 'wrong-mode';
+            btnWrong.className = 'tab-btn active-tab-wrong';
+            btnCorrect.className = 'tab-btn';
+            mainSub.innerText = "התהליך הלא נכון: איטרציות בלולאה מול ה-Test ואז מציאת K אופטימלי";
+        } else {
+            bodyTag.className = 'correct-mode';
+            btnWrong.className = 'tab-btn';
+            btnCorrect.className = 'tab-btn active-tab-correct';
+            mainSub.innerText = "התהליך הנכון: איטרציות בלולאה מול ה-Validation ואז מציאת K אופטימלי";
+        }
+
+        buildStepsDOM();
+        updateView();
+    }
+
+    function buildStepsDOM() {
+        const container = document.getElementById('stepsListContainer');
+        container.innerHTML = '';
+        const stepsArr = dataModel[currentMode].steps;
+
+        stepsArr.forEach((text, index) => {
+            const item = document.createElement('div');
+            item.className = 'step-item';
+            item.id = `step-node-${index}`;
+            
+            let rightHtml = `<div class="step-content-left"><span class="bullet"></span><span>${text}</span></div>`;
+            let leftIndicator = '';
+
+            if (index === 0) {
+                leftIndicator = `<span class="standard-badge">K = <span id="kValBadge">1</span></span>`;
+            } else if (index === 3) {
+                leftIndicator = `<span class="standard-badge">תוצאת לולאה</span>`;
+            } else if (index === 4) {
+                leftIndicator = `<span class="standard-badge">מבחן סופי</span>`;
+            } else {
+                leftIndicator = `<span class="standard-badge">-</span>`;
+            }
+
+            item.innerHTML = rightHtml + leftIndicator;
+            container.appendChild(item);
+        });
+    }
+
+    function updateView() {
+        const stepsArr = dataModel[currentMode].steps;
+        
+        // חישוב השלב הפעיל הכולל במסך
+        let activeGlobalStep = (kSubStep < kValuesList.length) ? currentLoopStep : postLoopStep;
+
+        for (let i = 0; i < stepsArr.length; i++) {
+            const node = document.getElementById(`step-node-${i}`);
+            node.className = 'step-item';
+            
+            if (kSubStep >= kValuesList.length) {
+                // הלולאה הסתיימה, עברנו לשלבים 3 ו-4
+                if (i < postLoopStep) {
+                    node.classList.add('completed');
+                } else if (i === postLoopStep) {
+                    node.classList.add('active');
+                }
+            } else {
+                // אנחנו בתוך לולאת האיטרציות (שלבים 0, 1, 2)
+                if (i < currentLoopStep) {
+                    node.classList.add('completed');
+                } else if (i === currentLoopStep) {
+                    node.classList.add('active');
+                }
+            }
+        }
+
+        // עדכון תצוגת ערך ה-K הנוכחי בבאג
+        const kBadge = document.getElementById('kValBadge');
+        if (kBadge) {
+            kBadge.innerText = kValuesList[Math.min(kSubStep, kValuesList.length - 1)];
+        }
+
+        const loopArrow = document.getElementById('loopArrow');
+        const loopLabel = document.getElementById('loopLabel');
+        
+        if (kSubStep < kValuesList.length) {
+            loopArrow.classList.add('visible');
+            loopLabel.classList.add('visible');
+            loopLabel.innerText = `🔄 איטרציה K = ${kValuesList[kSubStep]} (${kSubStep + 1}/${kValuesList.length})`;
+        } else {
+            loopArrow.classList.remove('visible');
+            loopLabel.classList.remove('visible');
+        }
+
+        const expBox = document.getElementById('explanationBox');
+        let currentExp = "";
+        if (kSubStep < kValuesList.length) {
+            currentExp = dataModel[currentMode].explanations[currentLoopStep].replace("[K_VAL]", kValuesList[kSubStep]);
+        } else {
+            currentExp = dataModel[currentMode].explanations[postLoopStep];
+        }
+        expBox.innerText = currentExp;
+
+        if (currentMode === 'wrong') {
+            expBox.className = 'highlight-box wrong-theme-box';
+        } else {
+            expBox.className = 'highlight-box correct-theme-box';
+        }
+
+        const barTrain = document.getElementById('barTrain');
+        const barVal = document.getElementById('barVal');
+        const barTest = document.getElementById('barTest');
+
+        barTrain.style.opacity = '0.4';
+        barVal.style.opacity = '0.4';
+        barTest.style.opacity = '0.4';
+        barTrain.style.boxShadow = 'none';
+        barVal.style.boxShadow = 'none';
+        barTest.style.boxShadow = 'none';
+
+        if (currentMode === 'wrong') {
+            if (kSubStep < kValuesList.length) {
+                if (currentLoopStep === 1) {
+                    barTrain.style.opacity = '1';
+                    barTrain.style.boxShadow = '0 0 8px rgba(237, 137, 54, 0.8)';
+                } else if (currentLoopStep === 2) {
+                    barTest.style.opacity = '1';
+                    barTest.style.boxShadow = '0 0 10px rgba(229, 62, 62, 0.9)';
+                } else {
+                    barTrain.style.opacity = '1';
+                    barVal.style.opacity = '1';
+                    barTest.style.opacity = '1';
+                }
+            } else {
+                if (postLoopStep === 4) {
+                    barTest.style.opacity = '1';
+                    barTest.style.boxShadow = '0 0 10px rgba(229, 62, 62, 0.9)';
+                }
+            }
+        } else {
+            if (kSubStep < kValuesList.length) {
+                if (currentLoopStep === 1) {
+                    barTrain.style.opacity = '1';
+                    barTrain.style.boxShadow = '0 0 8px rgba(237, 137, 54, 0.8)';
+                } else if (currentLoopStep === 2) {
+                    barVal.style.opacity = '1';
+                    barVal.style.boxShadow = '0 0 10px rgba(72, 187, 120, 0.9)';
+                } else {
+                    barTrain.style.opacity = '1';
+                    barVal.style.opacity = '1';
+                    barTest.style.opacity = '1';
+                }
+            } else {
+                if (postLoopStep === 4) {
+                    barTest.style.opacity = '1';
+                    barTest.style.boxShadow = '0 0 10px rgba(66, 153, 225, 0.9)';
+                }
+            }
+        }
+
+        const isAtStart = (kSubStep === 0 && currentLoopStep === 0);
+        const isAtEnd = (kSubStep >= kValuesList.length && postLoopStep === 4);
+        
+        document.getElementById('prevBtn').disabled = isAtStart;
+        document.getElementById('nextBtn').disabled = isAtEnd;
+        
+        let statusText = "";
+        if (kSubStep < kValuesList.length) {
+            statusText = `לולאת איטרציות: K = ${kValuesList[kSubStep]} (שלב ${currentLoopStep + 1} מתוך 3 בלולאה)`;
+        } else {
+            statusText = `שלב סופי: ${stepsArr[postLoopStep]}`;
+        }
+        document.getElementById('statusFooter').innerText = statusText;
+    }
+
+    function nextStep() {
+        if (kSubStep < kValuesList.length) {
+            // התקדמות בתוך הלולאה (0 ➔ 1 ➔ 2 ואז חזרה ל-0 עם K הבא)
+            currentLoopStep++;
+            if (currentLoopStep > 2) {
+                currentLoopStep = 0;
+                kSubStep++; // עוברים ל-K הבא
+                if (kSubStep >= kValuesList.length) {
+                    // הלולאה הסתיימה! עוברים לשלב 3 ("נמצא K אופטימלי")
+                    postLoopStep = 3;
+                }
+            }
+        } else {
+            // אחרי שהלולאה הסתיימה, מתקדמים לשלב 4 ("בחירה סופית")
+            if (postLoopStep === 3) {
+                postLoopStep = 4;
+            } else {
+                stopAutoPlay();
+            }
+        }
+        updateView();
+    }
+
+    function prevStep() {
+        if (kSubStep >= kValuesList.length) {
+            if (postLoopStep === 4) {
+                postLoopStep = 3;
+            } else {
+                // חזרה מהשלב "נמצא K אופטימלי" חזרה לאיטרציה האחרונה בלולאה
+                kSubStep = kValuesList.length - 1;
+                currentLoopStep = 2;
+            }
+        } else {
+            if (currentLoopStep > 0) {
+                currentLoopStep--;
+            } else {
+                if (kSubStep > 0) {
+                    kSubStep--;
+                    currentLoopStep = 2;
+                }
+            }
+        }
+        updateView();
+    }
+
+    function resetSteps() {
+        stopAutoPlay();
+        currentLoopStep = 0;
+        kSubStep = 0;
+        postLoopStep = 3;
+        updateView();
+    }
+
+    function togglePlay() {
+        const playBtn = document.getElementById('playBtn');
+        if (autoPlayInterval) {
+            stopAutoPlay();
+        } else {
+            playBtn.innerText = "⏸ עצור";
+            if (kSubStep >= kValuesList.length && postLoopStep === 4) {
+                resetSteps();
+            }
+            autoPlayInterval = setInterval(() => {
+                if (kSubStep >= kValuesList.length && postLoopStep === 4) {
+                    stopAutoPlay();
+                } else {
+                    nextStep();
+                }
+            }, 1400);
+        }
+    }
+
+    function stopAutoPlay() {
+        if (autoPlayInterval) {
+            clearInterval(autoPlayInterval);
+            autoPlayInterval = null;
+            document.getElementById('playBtn').innerText = "▶ הפעל אוטומטית";
+        }
+    }
+
+    buildStepsDOM();
+    updateView();
+</script>
+
+</body>
+</html>
